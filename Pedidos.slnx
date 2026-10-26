@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Pedidos.Api/Pedidos.Api.csproj" />
+    <Project Path="src/Pedidos.Worker/Pedidos.Worker.csproj" />
+  </Folder>
+</Solution>
