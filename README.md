@@ -21,6 +21,12 @@ Cliente ──> API ───────── INSERT ────────�
 - SQL Server 2022 (Docker)
 - Azure Service Bus
 
+## Funcionamento
+
+https://github.com/user-attachments/assets/3091a02a-6aa9-4579-9b21-23624e25b796
+
+https://github.com/user-attachments/assets/71a6a42b-f869-421c-baa3-3119d97e23a5
+
 ## Como rodar
 
 Pré-requisitos: .NET 10 SDK, Docker, Azure CLI e uma conta no Azure. Os comandos partem da raiz do repositório.
