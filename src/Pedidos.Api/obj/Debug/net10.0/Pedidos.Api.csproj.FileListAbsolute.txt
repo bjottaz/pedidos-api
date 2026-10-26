@@ -150,3 +150,4 @@
 /home/brunojose/repo/me/dotnet/pedidos-api/src/Pedidos.Api/obj/Debug/net10.0/ref/Pedidos.Api.dll
 /home/brunojose/repo/me/dotnet/pedidos-api/src/Pedidos.Api/bin/Debug/net10.0/System.Security.Cryptography.Pkcs.dll
 /home/brunojose/repo/me/dotnet/pedidos-api/src/Pedidos.Api/bin/Debug/net10.0/runtimes/win/lib/net10.0/System.Security.Cryptography.Pkcs.dll
+/home/brunojose/repo/me/dotnet/pedidos-api/src/Pedidos.Api/obj/Debug/net10.0/Pedidos.Api.sourcelink.json

@@ -25,13 +25,25 @@ Cliente ──> API ───────── INSERT ────────�
 
 Pré-requisitos: .NET 10 SDK, Docker, Azure CLI e uma conta no Azure. Os comandos partem da raiz do repositório.
 
-**1. Senha do SQL Server**
+**1. Configurar o ambiente**
 
 ```bash
 cp .env.example .env
 ```
 
 Defina `MSSQL_SA_PASSWORD` no `.env`. A senha precisa ter no mínimo 8 caracteres e usar 3 destas 4 categorias: maiúsculas, minúsculas, números e símbolos. Se não atender, o container encerra ao iniciar (veja `docker logs sqlserver`).
+
+Em seguida, defina as variáveis usadas nos próximos passos. Este é o único bloco que precisa de edição; os demais comandos podem ser copiados como estão:
+
+```bash
+RG=rg-pedidos
+LOCATION=brazilsouth          # opções: az account list-locations --output table
+NAMESPACE=sb-pedidos-$RANDOM  # o nome do namespace precisa ser único em todo o Azure
+
+set -a; source .env; set +a   # carrega MSSQL_SA_PASSWORD do .env
+```
+
+As variáveis existem só no terminal atual. Rode os passos 2 a 5 nesse mesmo terminal.
 
 **2. Subir o SQL Server**
 
@@ -49,23 +61,25 @@ docker exec sqlserver sh -c '/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa
 
 ```bash
 az login
-az group create --name rg-pedidos --location <regiao>
-az servicebus namespace create --resource-group rg-pedidos --name <nome-unico> --location <regiao> --sku Basic
-az servicebus queue create --resource-group rg-pedidos --namespace-name <nome-unico> --name pedidos-criados
+az group create --name "$RG" --location "$LOCATION"
+az servicebus namespace create --resource-group "$RG" --name "$NAMESPACE" --location "$LOCATION" --sku Basic
+az servicebus queue create --resource-group "$RG" --namespace-name "$NAMESPACE" --name pedidos-criados
 
 # Connection string usada no próximo passo
-az servicebus namespace authorization-rule keys list --resource-group rg-pedidos --namespace-name <nome-unico> --name RootManageSharedAccessKey --query primaryConnectionString --output tsv
+CONN=$(az servicebus namespace authorization-rule keys list --resource-group "$RG" --namespace-name "$NAMESPACE" --name RootManageSharedAccessKey --query primaryConnectionString --output tsv)
 ```
 
 **5. Configurar os user-secrets**
 
-Cada projeto tem os próprios secrets, então os dois precisam ser configurados:
+Cada projeto tem os próprios secrets, então os dois precisam ser configurados. Os valores vêm das variáveis, então nenhum segredo fica no histórico do terminal:
 
 ```bash
 for p in src/Pedidos.Api src/Pedidos.Worker; do
-  dotnet user-secrets set "ConnectionStrings:Default" "Server=localhost,1433;Database=Pedidos;User Id=sa;Password=<sua-senha-sql-server>;TrustServerCertificate=True" --project $p
-  dotnet user-secrets set "ServiceBus:ConnectionString" "<connection-string-do-service-bus>" --project $p
+  dotnet user-secrets set "ConnectionStrings:Default" "Server=localhost,1433;Database=Pedidos;User Id=sa;Password=$MSSQL_SA_PASSWORD;TrustServerCertificate=True" --project "$p"
+  dotnet user-secrets set "ServiceBus:ConnectionString" "$CONN" --project "$p"
 done
+
+unset CONN MSSQL_SA_PASSWORD
 ```
 
 **6. Rodar a API e o worker** (em terminais separados)
@@ -78,17 +92,22 @@ dotnet run --project src/Pedidos.Worker
 **Testar**
 
 ```bash
-curl -i -X POST http://localhost:5254/pedidos -H "Content-Type: application/json" -d '{"cliente": "Maria", "valor": 150.00}'
-curl http://localhost:5254/pedidos/<id>
+ID=$(curl -s -X POST http://localhost:5254/pedidos -H "Content-Type: application/json" -d '{"cliente": "Maria", "valor": 150.00}' | grep -o '[0-9]\+')
+echo "Pedido criado: $ID"
+
+curl http://localhost:5254/pedidos/$ID
 ```
 
-O `POST` responde `201 Created` com o `id`. Depois que o worker processar a mensagem, o `GET` mostra `"status": "Processado"`. A API também expõe `GET /pedidos`, que lista todos os pedidos.
+O `POST` responde `201 Created` com o `id`, que fica guardado em `$ID`. Depois que o worker processar a mensagem, o `GET` mostra `"status": "Processado"`. A API também expõe `GET /pedidos`, que lista todos os pedidos.
 
 **Limpeza**
 
+No terminal do passo 1, ou depois de definir `RG` de novo:
+
 ```bash
-az group delete --name rg-pedidos --yes --no-wait
+az group delete --name "$RG" --yes --no-wait
 docker compose down -v
+unset RG LOCATION NAMESPACE ID
 ```
 
 ## Decisões de design
